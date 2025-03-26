@@ -14,3 +14,8 @@ Step 2: RUN PROJECT
 
 1) ON EXISTING PATH AFTER COMPLETING 1ST STEP IS USE FOLLOWING COMMAND TO RUN :
 npm start
+
+### Install Dependencies
+```sh
+npm install i
+

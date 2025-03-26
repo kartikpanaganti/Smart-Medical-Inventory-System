@@ -8,7 +8,8 @@ Step 1: Install all package
   1) ~ NAVIGATE THE " Smart-Medical-Inventory-System " & FOLDER OPEN IN CODE EDITOR
   2) ~ OPEN TERMINAL AND TYPE FOLLOWING COMMAND TO INSALL ALL PAKAGES
   3) PASTE THIS FOLLOWING COMMAND:
-      npm run packageinstall
+     ### Install Dependencies
+```sh ```
 
 Step 2: RUN PROJECT
 

@@ -28,7 +28,7 @@ function App() {
             <Route path="/expiring" element={<ExpiringMedicines />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/expiry-tracker" element={<ExpiryTracker />} />
-            <Route path="/expiry-diagnostic" element={<ExpiryDiagnostic />} />
+            {/* <Route path="/expiry-diagnostic" element={<ExpiryDiagnostic />} /> */}
             <Route path="/sales" element={<Sales />} />
             <Route path="/sales-history" element={<SalesHistory />} />
           </Routes>

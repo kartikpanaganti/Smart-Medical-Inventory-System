@@ -3,12 +3,15 @@ import { ViewfinderCircleIcon, ShoppingCartIcon, ChartBarIcon, Cog6ToothIcon } f
 import { useState } from 'react';
 import BarcodeScanner from './BarcodeScanner';
 import BillingPanel from './BillingPanel';
+import MedicineDetailsModal from './MedicineDetailsModal';
 
 function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [showScanner, setShowScanner] = useState(false);
   const [showBillingPanel, setShowBillingPanel] = useState(false);
+  const [showMedicineModal, setShowMedicineModal] = useState(false);
+  const [selectedMedicineId, setSelectedMedicineId] = useState(null);
 
   const isActive = (path) => {
     return location.pathname === path ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100';
@@ -17,7 +20,8 @@ function Navbar() {
   const handleScanComplete = (scannedMedicine) => {
     setShowScanner(false);
     if (scannedMedicine && scannedMedicine._id) {
-      navigate(`/medicines/${scannedMedicine._id}`);
+      setSelectedMedicineId(scannedMedicine._id);
+      setShowMedicineModal(true);
     }
   };
 
@@ -62,14 +66,14 @@ function Navbar() {
                 Expiry Tracker
               </Link>
               
-              {/* Diagnostic Tool Link */}
+              {/* Diagnostic Tool Link
               <Link
                 to="/expiry-diagnostic"
                 className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/expiry-diagnostic')} flex items-center`}
               >
                 <Cog6ToothIcon className="h-5 h-5 mr-1" />
                 Diagnostic
-              </Link>
+              </Link> */}
               
               {/* Sales Link */}
               <Link
@@ -112,6 +116,17 @@ function Navbar() {
         <BillingPanel
           isOpen={showBillingPanel}
           onClose={() => setShowBillingPanel(false)}
+        />
+      )}
+
+      {showMedicineModal && (
+        <MedicineDetailsModal
+          isOpen={showMedicineModal}
+          onClose={() => {
+            setShowMedicineModal(false);
+            setSelectedMedicineId(null);
+          }}
+          medicineId={selectedMedicineId}
         />
       )}
     </>

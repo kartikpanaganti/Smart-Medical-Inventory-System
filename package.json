@@ -1,0 +1,26 @@
+{
+  "name": "smart-medical-inventory-system",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm run dev -- --host",
+    "packageinstall": "cd server && npm i && cd .. && cd client && npm i && cd .."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kartikpanganti/Smart-Medical-Inventory-System.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/kartikpanganti/Smart-Medical-Inventory-System/issues"
+  },
+  "homepage": "https://github.com/kartikpanganti/Smart-Medical-Inventory-System#readme",
+  "dependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

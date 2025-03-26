@@ -3,10 +3,9 @@ import Barcode from 'react-barcode';
 import { QRCodeSVG } from 'qrcode.react';
 import { PrinterIcon, QrCodeIcon, DocumentDuplicateIcon, ViewfinderCircleIcon, ArrowDownTrayIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import BarcodeScanner from './BarcodeScanner';
-import { useReactToPrint } from 'react-to-print';
 
 // Create a separate printable component
-const PrintableBarcode = React.forwardRef(({ codeType, medicine, copies, size, renderCode }, ref) => {
+const PrintableBarcode = ({ codeType, medicine, copies, size, sizeConfigs }) => {
   // Function to create minimal QR data
   const createMinimalQRData = (medicine) => {
     return JSON.stringify({
@@ -17,32 +16,37 @@ const PrintableBarcode = React.forwardRef(({ codeType, medicine, copies, size, r
   };
 
   return (
-    <div ref={ref} className="p-4">
+    <div className="p-4 print-container">
       <div className="grid gap-4 grid-cols-2">
         {[...Array(copies)].map((_, index) => (
-          <div key={index} className="barcode-container text-center">
+          <div key={index} className="barcode-container p-4 border border-gray-200 rounded text-center">
             {codeType === 'barcode' ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <Barcode
                   value={medicine.barcode || `MED${medicine._id.slice(-4)}`}
-                  width={size === 'small' ? 1 : size === 'large' ? 2 : 1.5}
-                  height={size === 'small' ? 30 : size === 'large' ? 70 : 50}
-                  fontSize={size === 'small' ? 8 : size === 'large' ? 14 : 12}
+                  width={sizeConfigs[size].width}
+                  height={sizeConfigs[size].height}
+                  fontSize={sizeConfigs[size].fontSize}
                   displayValue={false}
                 />
-                <div style={{ marginTop: '8px', fontSize: size === 'small' ? '10px' : size === 'large' ? '14px' : '12px', textAlign: 'center', fontWeight: '500' }}>
+                <div style={{ marginTop: '8px', fontSize: sizeConfigs[size].fontSize, textAlign: 'center', fontWeight: '500' }}>
+                  {medicine.barcode || `MED${medicine._id.slice(-4)}`}
+                </div>
+                <div style={{ marginTop: '8px', fontSize: sizeConfigs[size].fontSize, textAlign: 'center', fontWeight: '500' }}>
                   {medicine.name}
                 </div>
               </div>
             ) : (
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <QRCodeSVG
                   value={createMinimalQRData(medicine)}
-                  size={size === 'small' ? 64 : size === 'large' ? 256 : 128}
+                  size={sizeConfigs[size].qrSize}
                   level="M"
                   includeMargin={true}
                 />
-                <div className="mt-1 text-sm text-gray-600">{medicine.name}</div>
+                <div style={{ marginTop: '8px', fontSize: sizeConfigs[size].fontSize, textAlign: 'center', fontWeight: '500' }}>
+                  {medicine.name}
+                </div>
               </div>
             )}
           </div>
@@ -50,43 +54,24 @@ const PrintableBarcode = React.forwardRef(({ codeType, medicine, copies, size, r
       </div>
     </div>
   );
-});
+};
 
 const BarcodeGenerator = ({ medicine, onClose }) => {
   const [barcodeType, setBarcodeType] = useState('barcode');
   const [copies, setCopies] = useState(1);
   const [size, setSize] = useState('medium');
+  const [columns, setColumns] = useState(5);
   const [showScanner, setShowScanner] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const previewRef = useRef(null);
-  const printRef = useRef(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const printContainerRef = useRef(null);
+  const printFrameRef = useRef(null);
 
   // Size configurations for different barcode sizes
   const sizeConfigs = {
-    small: { width: 1, height: 30, fontSize: 10, margin: 5 },
-    medium: { width: 1.5, height: 50, fontSize: 12, margin: 10 },
-    large: { width: 2, height: 70, fontSize: 14, margin: 15 }
-  };
-
-  // Handle print functionality
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: `${medicine.name}_barcode`,
-  });
-
-  // Generate an array of copies to render
-  const barcodeArray = Array.from({ length: copies }, (_, index) => index);
-
-  // Get size configurations
-  const getSizeConfig = () => {
-    switch (size) {
-      case 'small':
-        return { width: 1, height: 30, fontSize: 8, qrSize: 64 };
-      case 'large':
-        return { width: 2, height: 70, fontSize: 14, qrSize: 256 };
-      default: // medium
-        return { width: 1.5, height: 50, fontSize: 12, qrSize: 128 };
-    }
+    small: { width: 1.5, height: 30, fontSize: 9, margin: 2, qrSize: 60 },
+    medium: { width: 2.5, height: 50, fontSize: 11, margin: 3, qrSize: 90 },
+    large: { width: 4.0, height: 80, fontSize: 13, margin: 4, qrSize: 120 }
   };
 
   // Function to create minimal QR data to prevent overflow
@@ -98,289 +83,308 @@ const BarcodeGenerator = ({ medicine, onClose }) => {
     });
   };
 
-  const renderCode = (key = null) => {
-    if (barcodeType === 'barcode') {
-      return (
-        <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Barcode
-            value={medicine.barcode || `MED${medicine._id.slice(-4)}`}
-            width={sizeConfigs[size].width}
-            height={sizeConfigs[size].height}
-            fontSize={sizeConfigs[size].fontSize}
-            margin={sizeConfigs[size].margin}
-            displayValue={false}
-          />
-          <div style={{ marginTop: '8px', fontSize: sizeConfigs[size].fontSize, textAlign: 'center', fontWeight: '500' }}>
-            {medicine.barcode || `MED${medicine._id.slice(-4)}`}
-          </div>
-          <div style={{ marginTop: '8px', fontSize: sizeConfigs[size].fontSize, textAlign: 'center', fontWeight: '500' }}>
-            {medicine.name}
-          </div>
-        </div>
-      );
-    } else {
-      return (
-        <div key={key}>
-          <QRCodeSVG
-            value={createMinimalQRData(medicine)}
-            size={sizeConfigs[size].height * 2}
-            level="H"
-          />
-          <div className="mt-1 text-sm text-gray-600">{medicine.name}</div>
-        </div>
-      );
-    }
-  };
-
-  // Load required external libraries
+  // Create the print frame on component mount
   useEffect(() => {
-    const loadScript = (src, id) => {
-      return new Promise((resolve, reject) => {
-        if (document.getElementById(id)) {
-          resolve();
-          return;
-        }
-
-        const script = document.createElement('script');
-        script.id = id;
-        script.src = src;
-        script.async = true;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.body.appendChild(script);
-      });
+    // Create an iframe for printing if it doesn't exist
+    if (!printFrameRef.current) {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'absolute';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.style.left = '-9999px';
+      iframe.name = 'print-frame-' + Date.now();
+      iframe.id = iframe.name;
+      document.body.appendChild(iframe);
+      printFrameRef.current = iframe;
+    }
+    
+    // Clean up on component unmount
+    return () => {
+      if (printFrameRef.current && document.body.contains(printFrameRef.current)) {
+        document.body.removeChild(printFrameRef.current);
+      }
     };
-
-    Promise.all([
-      loadScript('https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js', 'jspdf-script'),
-      loadScript('https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js', 'html2canvas-script')
-    ]).catch(err => console.error('Failed to load library:', err));
   }, []);
 
-  // Generate a PDF with the barcodes
-  const handleGeneratePDF = async () => {
-    if (!window.jspdf || !window.html2canvas) {
-      alert('PDF generation libraries are still loading. Please try again in a moment.');
-      return;
-    }
-
-    setIsGenerating(true);
+  // Handle print functionality with browser's native print
+  const handlePrint = () => {
+    if (!printFrameRef.current) return;
     
-    try {
-      // Fixed layout: 4 columns and 5 rows = 20 barcodes per page
-      const barcodesPerRow = 4;
-      const rowsPerPage = 5;
-      const barcodesPerPage = barcodesPerRow * rowsPerPage; // 20 barcodes per page
-      const totalPages = Math.ceil(copies / barcodesPerPage);
+    setIsPrinting(true);
+    
+    const iframe = printFrameRef.current;
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    
+    // Add print-specific styles
+    const printStyles = `
+      <style>
+        @page {
+          size: auto;
+          margin: 10mm;
+        }
+        body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .print-container {
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(${columns}, minmax(0, 1fr));
+          gap: 8px;
+          margin: 0;
+          padding: 8px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .barcode-container {
+          padding: 8px;
+          border: 1px solid #ddd;
+          border-radius: 3px;
+          text-align: center;
+          page-break-inside: avoid;
+          break-inside: avoid;
+          margin: 0;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          background-color: white;
+          box-sizing: border-box;
+        }
+        .qr-container {
+          padding: 8px;
+          margin: 0;
+        }
+        svg.barcode {
+          width: 100% !important;
+          max-width: 100% !important;
+          height: auto !important;
+        }
+        @media print {
+          body {
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .print-container {
+            width: 100%;
+            padding: 0;
+            margin: 0 auto;
+          }
+          .grid {
+            grid-template-columns: repeat(${columns}, minmax(0, 1fr));
+            gap: 4px;
+            padding: 4px;
+            margin: 0;
+            width: 100%;
+          }
+          .barcode-container {
+            padding: 4px;
+            border: 1px solid #ddd;
+            margin: 0;
+            max-width: 100%;
+            overflow: hidden;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          .page-break {
+            page-break-after: always;
+          }
+          svg.barcode {
+            max-width: 100%;
+            height: auto !important;
+            display: block !important;
+          }
+        }
+      </style>
+    `;
+    
+    // Create the printable content
+    let printContent = `
+      <html>
+      <head>
+        <title>${medicine.name} - Barcodes</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        ${printStyles}
+      </head>
+      <body>
+        <div class="print-container">
+          <div class="grid">
+    `;
+    
+    // Generate the barcode content
+    for (let i = 0; i < copies; i++) {
+      printContent += `
+        <div class="barcode-container">
+      `;
       
-      // Create PDF with appropriate page size and higher quality settings
-      const pdf = new jspdf.jsPDF({
-        orientation: 'landscape', // Landscape works better for 4 columns
-        unit: 'mm',
-        format: 'a4',
-        compress: false // Avoid compression to maintain quality
-      });
+      if (barcodeType === 'barcode') {
+        // For barcode type, we'll use JsBarcode library
+        printContent += `
+          <div style="display: flex; flex-direction: column; align-items: center; margin: 0;" class="qr-container">
+            <svg id="barcode-${i}" class="barcode" style="margin: 4px;"></svg>
+            <div style="margin-top: 6px; font-size: ${sizeConfigs[size].fontSize}px; text-align: center; font-weight: 500;">
+              ${medicine.barcode || `MED${medicine._id.slice(-4)}`}
+            </div>
+            <div style="margin-top: 2px; font-size: ${sizeConfigs[size].fontSize}px; text-align: center; font-weight: 500;">
+              ${medicine.name}
+            </div>
+          </div>
+        `;
+      } else {
+        // For QR code type, we'll use QRCode.js library
+        printContent += `
+          <div style="display: flex; flex-direction: column; align-items: center; margin: 0;" class="qr-container">
+            <div id="qrcode-${i}" style="margin: 4px;"></div>
+            <div style="margin-top: 6px; font-size: ${sizeConfigs[size].fontSize}px; text-align: center; font-weight: 500;">
+              ${medicine.barcode || `MED${medicine._id.slice(-4)}`}
+            </div>
+            <div style="margin-top: 2px; font-size: ${sizeConfigs[size].fontSize}px; text-align: center; font-weight: 500;">
+              ${medicine.name}
+            </div>
+          </div>
+        `;
+      }
       
-      // Process each page
-      for (let page = 0; page < totalPages; page++) {
-        // Create container for current page
-        const pageContainer = document.createElement('div');
-        pageContainer.style.width = '297mm'; // A4 landscape width
-        pageContainer.style.backgroundColor = 'white';
-        pageContainer.style.padding = '10mm';
-        
-        // Create grid for this page
-        const grid = document.createElement('div');
-        grid.style.display = 'grid';
-        grid.style.gridTemplateColumns = `repeat(${barcodesPerRow}, 1fr)`;
-        grid.style.gap = '5mm';
-        grid.style.width = '100%';
-        
-        // Calculate how many barcodes for this page
-        const startIdx = page * barcodesPerPage;
-        const endIdx = Math.min(startIdx + barcodesPerPage, copies);
-        
-        // Add barcodes for this page
-        for (let i = startIdx; i < endIdx; i++) {
-          const barcodeContainer = document.createElement('div');
-          barcodeContainer.style.textAlign = 'center';
-          barcodeContainer.style.padding = '3mm';
-          barcodeContainer.style.border = '1px solid #eaeaea';
-          barcodeContainer.style.borderRadius = '2mm';
-          
-          const barcodeElement = document.createElement('div');
-          
-          if (barcodeType === 'barcode') {
-            const barcodeValue = medicine.barcode || `MED${medicine._id.slice(-4)}`;
-            
-            // Adjusted for high-quality printing
-            const sizeAdjustment = 0.8; // Scale down slightly to fit 4 columns
-            
-            // Create SVG element for barcode
-            const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            
-            // Create wrapper container
-            const wrapper = document.createElement('div');
-            wrapper.style.display = 'flex';
-            wrapper.style.flexDirection = 'column';
-            wrapper.style.alignItems = 'center';
-            
-            // Use JsBarcode to render SVG
-            try {
-              JsBarcode(svgElement, barcodeValue, {
-                width: sizeConfigs[size].width * sizeAdjustment,
-                height: sizeConfigs[size].height * sizeAdjustment,
-                fontSize: sizeConfigs[size].fontSize * sizeAdjustment,
-                margin: sizeConfigs[size].margin * sizeAdjustment,
+      printContent += `
+        </div>
+      `;
+    }
+    
+    printContent += `
+          </div>
+        </div>
+      `;
+    
+    // Add necessary scripts
+    if (barcodeType === 'barcode') {
+      printContent += `
+        <script src="https://unpkg.com/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+        <script>
+          window.onload = function() {
+            // Generate all barcodes
+            for (let i = 0; i < ${copies}; i++) {
+              JsBarcode("#barcode-" + i, "${medicine.barcode || `MED${medicine._id.slice(-4)}`}", {
+                width: ${sizeConfigs[size].width},
+                height: ${sizeConfigs[size].height},
+                fontSize: ${sizeConfigs[size].fontSize},
                 displayValue: false,
+                margin: ${sizeConfigs[size].margin},
                 format: "CODE128",
-                lineColor: "#000",
-                background: "#ffffff"
+                background: "#ffffff",
+                lineColor: "#000000"
               });
               
-              // Add SVG to wrapper
-              svgElement.style.margin = '0 auto';
-              wrapper.appendChild(svgElement);
-              
-              // Add name label with proper styling
-              const nameLabel = document.createElement('div');
-              nameLabel.style.marginTop = '5px';
-              nameLabel.style.fontSize = `${sizeConfigs[size].fontSize * sizeAdjustment}px`;
-              nameLabel.style.textAlign = 'center';
-              nameLabel.style.fontWeight = '500';
-              nameLabel.style.width = '100%';
-              nameLabel.textContent = medicine.name;
-              wrapper.appendChild(nameLabel);
-              
-              barcodeElement.appendChild(wrapper);
-            } catch (e) {
-              console.error('Barcode generation error:', e);
-              
-              // Fallback to text if barcode generation fails
-              const errorText = document.createElement('div');
-              errorText.textContent = `Barcode: ${barcodeValue}`;
-              errorText.style.padding = '10px';
-              errorText.style.border = '1px solid #ddd';
-              errorText.style.textAlign = 'center';
-              
-              const nameLabel = document.createElement('div');
-              nameLabel.style.marginTop = '5px';
-              nameLabel.style.fontSize = `${sizeConfigs[size].fontSize * sizeAdjustment}px`;
-              nameLabel.style.fontWeight = '500';
-              nameLabel.textContent = medicine.name;
-              
-              wrapper.appendChild(errorText);
-              wrapper.appendChild(nameLabel);
-              barcodeElement.appendChild(wrapper);
+              // Force set SVG dimensions to ensure proper scaling
+              const barcodeSvg = document.getElementById("barcode-" + i);
+              if (barcodeSvg) {
+                barcodeSvg.setAttribute("width", "100%");
+                barcodeSvg.setAttribute("height", "${sizeConfigs[size].height}px");
+                barcodeSvg.style.width = "100%";
+                barcodeSvg.style.height = "${sizeConfigs[size].height}px";
+                barcodeSvg.style.maxWidth = "100%";
+                barcodeSvg.style.display = "block";
+                barcodeSvg.style.margin = "0 auto";
+                
+                // Fix SVG viewBox to ensure perfect rendering
+                if (!barcodeSvg.hasAttribute("viewBox") && 
+                    barcodeSvg.hasAttribute("width") && 
+                    barcodeSvg.hasAttribute("height")) {
+                  const w = barcodeSvg.getAttribute("width").replace("px", "");
+                  const h = barcodeSvg.getAttribute("height").replace("px", "");
+                  barcodeSvg.setAttribute("viewBox", "0 0 " + w + " " + h);
+                }
+              }
             }
-          } else {
-            // QR code with minimal data to prevent overflow
-            const qrData = createMinimalQRData(medicine);
             
-            // Adjust size for 4-column layout
-            const sizeAdjustment = 0.8; // Scale down slightly to fit 4 columns
-            const qrSize = sizeConfigs[size].height * 2 * sizeAdjustment;
+            // Notify parent window that generation is complete
+            window.parent.postMessage('barcodeGenerationComplete', '*');
             
-            // Create QR code container
-            const qrContainer = document.createElement('div');
-            qrContainer.id = `qrcode-page${page}-${i}`;
-            qrContainer.style.width = `${qrSize}px`;
-            qrContainer.style.height = `${qrSize}px`;
-            qrContainer.style.margin = '0 auto';
-            
-            barcodeElement.appendChild(qrContainer);
-            
-            try {
-              // Generate QR code with error handling at full size
-              new QRCode(qrContainer, {
-                text: qrData,
-                width: qrSize,
-                height: qrSize,
+            // Print after a short delay to ensure everything is rendered
+            setTimeout(function() {
+              window.print();
+              // Close the print dialog callback
+              setTimeout(function() {
+                window.parent.postMessage('printDialogClosed', '*');
+              }, 2000);
+            }, 1000);
+          };
+        </script>
+      `;
+    } else {
+      printContent += `
+        <script src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script>
+        <script>
+          window.onload = function() {
+            // Generate all QR codes
+            for (let i = 0; i < ${copies}; i++) {
+              new QRCode(document.getElementById("qrcode-" + i), {
+                text: '${createMinimalQRData(medicine)}',
+                width: ${sizeConfigs[size].qrSize},
+                height: ${sizeConfigs[size].qrSize},
                 colorDark: "#000000",
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.M
               });
-            } catch (e) {
-              console.error('QR code generation error:', e);
-              // Fallback to even more minimal data
-              const fallbackData = JSON.stringify({ id: medicine._id });
-              new QRCode(qrContainer, {
-                text: fallbackData,
-                width: qrSize,
-                height: qrSize,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.L
-              });
+              
+              // Force set QR code wrapper dimensions
+              const qrWrapper = document.getElementById("qrcode-" + i);
+              if (qrWrapper) {
+                qrWrapper.style.width = "${sizeConfigs[size].qrSize}px";
+                qrWrapper.style.height = "${sizeConfigs[size].qrSize}px";
+                qrWrapper.style.margin = "0 auto";
+              }
             }
             
-            // Add name label
-            const nameLabel = document.createElement('div');
-            nameLabel.style.marginTop = '5px';
-            nameLabel.style.fontSize = `${sizeConfigs[size].fontSize * sizeAdjustment}px`;
-            nameLabel.style.textAlign = 'center';
-            nameLabel.style.fontWeight = '500';
-            nameLabel.style.width = '100%';
-            nameLabel.textContent = medicine.name;
-            barcodeElement.appendChild(nameLabel);
-          }
-          
-          barcodeContainer.appendChild(barcodeElement);
-          grid.appendChild(barcodeContainer);
-        }
-        
-        pageContainer.appendChild(grid);
-        document.body.appendChild(pageContainer);
-        
-        // Use html2canvas to capture the page with high resolution
-        const canvas = await html2canvas(pageContainer, {
-          scale: 4, // Increased resolution for print quality
-          backgroundColor: 'white',
-          width: pageContainer.offsetWidth,
-          height: pageContainer.offsetHeight,
-          useCORS: true,
-          letterRendering: true,
-          allowTaint: false,
-          logging: false,
-          imageTimeout: 0
-        });
-        
-        // Remove page container from DOM
-        document.body.removeChild(pageContainer);
-        
-        // Calculate PDF dimensions (in mm)
-        const contentWidth = canvas.width;
-        const contentHeight = canvas.height;
-        const pdfWidth = 297; // A4 landscape width in mm
-        const pdfHeight = (contentHeight * pdfWidth) / contentWidth;
-        
-        // Add new page if not the first page
-        if (page > 0) {
-          pdf.addPage('a4', 'landscape');
-        }
-        
-        // Add image to PDF with high quality
-        pdf.addImage(
-          canvas.toDataURL('image/png', 1.0), // Use PNG for better quality
-          'PNG',
-          0,
-          0,
-          pdfWidth,
-          pdfHeight,
-          undefined, 
-          'FAST'
-        );
-      }
-      
-      // Download the multi-page PDF with high quality
-      pdf.save(`${medicine.name}_${barcodeType}_${copies}.pdf`);
-      
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
-    } finally {
-      setIsGenerating(false);
+            // Notify parent window that generation is complete
+            window.parent.postMessage('barcodeGenerationComplete', '*');
+            
+            // Print after a short delay to ensure everything is rendered
+            setTimeout(function() {
+              window.print();
+              // Notify parent when print dialog is closed
+              setTimeout(function() {
+                window.parent.postMessage('printDialogClosed', '*');
+              }, 2000);
+            }, 700);
+          };
+        </script>
+      `;
     }
+    
+    // Listen for messages from the iframe
+    const messageHandler = (event) => {
+      if (event.data === 'barcodeGenerationComplete') {
+        // Barcodes/QR codes have been generated, but print dialog not yet shown
+        console.log('Generation complete, print dialog opening soon...');
+      } else if (event.data === 'printDialogClosed') {
+        setIsPrinting(false);
+        window.removeEventListener('message', messageHandler);
+      }
+    };
+    
+    window.addEventListener('message', messageHandler);
+    
+    // Write the content to the iframe
+    iframeDoc.open();
+    iframeDoc.write(printContent);
+    iframeDoc.close();
+    
+    // Fallback in case the message events fail
+    setTimeout(() => {
+      setIsPrinting(false);
+    }, 8000);
   };
 
   const handleScanComplete = (scannedMedicine) => {
@@ -388,29 +392,22 @@ const BarcodeGenerator = ({ medicine, onClose }) => {
     console.log('Scanned medicine:', scannedMedicine);
   };
 
-  // Add script elements to ensure libraries are loaded
-  useEffect(() => {
-    // Add JsBarcode for barcode printing
-    if (!document.getElementById('jsbarcode-script')) {
-      const jsBarcodeScript = document.createElement('script');
-      jsBarcodeScript.id = 'jsbarcode-script';
-      jsBarcodeScript.src = 'https://unpkg.com/jsbarcode@3.11.5/dist/JsBarcode.all.min.js';
-      document.body.appendChild(jsBarcodeScript);
-    }
-    
-    // Add QRCode.js for QR code printing
-    if (!document.getElementById('qrcodejs-script')) {
-      const qrCodeScript = document.createElement('script');
-      qrCodeScript.id = 'qrcodejs-script';
-      qrCodeScript.src = 'https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js';
-      document.body.appendChild(qrCodeScript);
-    }
-  }, []);
+  // Create an array of copies to render in preview
+  const previewArray = Array.from({ length: 1 }, (_, index) => index);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose}></div>
+
+      {/* Loading Overlay */}
+      {isPrinting && (
+        <div className="fixed inset-0 bg-white bg-opacity-80 z-50 flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+          <p className="text-lg font-medium text-gray-700">Preparing {copies} {barcodeType === 'barcode' ? 'barcodes' : 'QR codes'}...</p>
+          <p className="text-sm text-gray-500 mt-2">Please wait while we generate your print preview.</p>
+        </div>
+      )}
 
       {/* Modal */}
       <div className="relative bg-white rounded-lg max-w-2xl w-full mx-4 shadow-xl transform transition-all opacity-100 scale-100">
@@ -461,6 +458,7 @@ const BarcodeGenerator = ({ medicine, onClose }) => {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="copies" className="block text-sm font-medium text-gray-700 mb-2">
                 Number of Copies
@@ -469,11 +467,26 @@ const BarcodeGenerator = ({ medicine, onClose }) => {
                 type="number"
                 id="copies"
                 min="1"
-                max="50"
+                  max="200"
                 value={copies}
-                onChange={(e) => setCopies(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+                  onChange={(e) => setCopies(Math.min(200, Math.max(1, parseInt(e.target.value) || 1)))}
+                  className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label htmlFor="columns" className="block text-sm font-medium text-gray-700 mb-2">
+                  Columns
+                </label>
+                <input
+                  type="number"
+                  id="columns"
+                  min="1"
+                  max="10"
+                  value={columns}
+                  onChange={(e) => setColumns(Math.min(10, Math.max(1, parseInt(e.target.value) || 5)))}
                 className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
               />
+              </div>
             </div>
 
             <div>
@@ -498,7 +511,7 @@ const BarcodeGenerator = ({ medicine, onClose }) => {
                 <div className="flex flex-col items-center">
                   {barcodeType === 'barcode' ? (
                     <Barcode
-                      value={medicine.barcode || medicine._id}
+                      value={medicine.barcode || `MED${medicine._id.slice(-4)}`}
                       width={sizeConfigs[size].width}
                       height={sizeConfigs[size].height}
                       fontSize={sizeConfigs[size].fontSize}
@@ -507,48 +520,18 @@ const BarcodeGenerator = ({ medicine, onClose }) => {
                     />
                   ) : (
                     <QRCodeSVG
-                      value={medicine.barcode || medicine._id}
-                      size={sizeConfigs[size].height * 2}
+                      value={createMinimalQRData(medicine)}
+                      size={sizeConfigs[size].qrSize}
                       level="H"
                     />
                   )}
                   <p className="text-center mt-2 text-sm text-gray-600 font-medium">
-                    {medicine.barcode || medicine._id}
+                    {medicine.barcode || `MED${medicine._id.slice(-4)}`}
                   </p>
                   <p className="text-center text-sm text-gray-700 font-semibold mt-1">
                     {medicine.name}
                   </p>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Print area (hidden) */}
-          <div className="hidden">
-            <div ref={printRef} className="p-4">
-              <div className="grid grid-cols-2 gap-4">
-                {barcodeArray.map((_, index) => (
-                  <div key={index} className="p-4 border border-gray-200 rounded flex flex-col items-center justify-center text-center">
-                    {barcodeType === 'barcode' ? (
-                      <Barcode
-                        value={medicine.barcode || medicine._id}
-                        width={sizeConfigs[size].width}
-                        height={sizeConfigs[size].height}
-                        fontSize={sizeConfigs[size].fontSize}
-                        margin={sizeConfigs[size].margin}
-                        displayValue={false}
-                      />
-                    ) : (
-                      <QRCodeSVG
-                        value={medicine.barcode || medicine._id}
-                        size={sizeConfigs[size].height * 2}
-                        level="H"
-                      />
-                    )}
-                    <p className="mt-2 text-sm font-medium">{medicine.barcode || medicine._id}</p>
-                    <p className="text-sm font-semibold mt-1">{medicine.name}</p>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
@@ -559,20 +542,37 @@ const BarcodeGenerator = ({ medicine, onClose }) => {
               type="button"
               onClick={onClose}
               className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md bg-white hover:bg-gray-50"
+              disabled={isPrinting}
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              disabled={isPrinting}
+              className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                isPrinting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
-              <PrinterIcon className="h-5 w-5 mr-2" />
-              Print Barcodes
+              {isPrinting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <PrinterIcon className="h-5 w-5 mr-2" />
+                  Print {barcodeType === 'barcode' ? 'Barcodes' : 'QR Codes'}
+                </>
+              )}
             </button>
           </div>
         </div>
       </div>
+      
       {showScanner && (
         <BarcodeScanner
           onClose={() => setShowScanner(false)}
